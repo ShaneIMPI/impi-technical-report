@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="IMPI Reports">
+<meta name="theme-color" content="#CC1C1C">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>IMPI Report Builder</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --red: #CC1C1C; --dark-red: #8B0000; --yellow: #F5C200;
+    --green: #1E7C4A; --amber: #B86C00; --status-red: #C0392B;
+    --dark: #3A3A3A; --light: #F7F7F7; --border: #E0E0E0; --white: #fff;
+    --green-bg: #E8F5E9; --amber-bg: #FFF8E1; --red-bg: #FFEBEE;
+    --safe-top: env(safe-area-inset-top, 0px);
+  }
+  html, body { height: 100%; }
+  body { font-family: Arial, sans-serif; background: #EBEBEB; color: var(--dark); -webkit-text-size-adjust: 100%; }
+
+  /* ── HEADER ── */
+  .app-header {
+    background: var(--red); padding: 12px 16px;
+    padding-top: calc(12px + var(--safe-top));
+    position: sticky; top: 0; z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  }
+  .header-inner { display: flex; align-items: center; gap: 14px; }
+  .logo-block { line-height: 1; flex-shrink: 0; }
+  .logo-name { font-size: 17px; font-weight: 900; color: #fff; }
+  .logo-tag { display: inline-block; background: var(--yellow); color: #333; font-size: 8px; font-weight: 700; padding: 1px 5px; letter-spacing: 0.05em; }
+  .logo-impi { font-size: 11px; font-weight: 900; color: #fff; letter-spacing: 1px; }
+  .header-text { flex: 1; border-left: 2px solid rgba(255,255,255,0.35); padding-left: 12px; }
+  .header-text h1 { font-size: 13px; color: #fff; font-weight: 700; }
+  .header-text p { font-size: 10px; color: rgba(255,255,255,0.65); margin-top: 1px; }
+  .progress-bar { height: 3px; background: rgba(255,255,255,0.25); border-radius: 2px; margin-top: 8px; }
+  .progress-fill { height: 100%; background: var(--yellow); border-radius: 2px; transition: width 0.3s; }
+
+  /* ── LAYOUT ── */
+  .container { max-width: 700px; margin: 0 auto; padding: 16px 12px 80px; }
+
+  /* ── STEP NAV ── */
+  .step-nav { display: flex; gap: 5px; margin-bottom: 16px; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
+  .step-nav::-webkit-scrollbar { display: none; }
+  .step-btn {
+    padding: 6px 13px; border-radius: 20px; font-size: 11px; font-weight: 700;
+    border: 1.5px solid var(--border); background: #fff; color: #888;
+    cursor: pointer; font-family: inherit; white-space: nowrap; flex-shrink: 0;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .step-btn.active { background: var(--red); border-color: var(--red); color: #fff; }
+  .step-btn.done { border-color: var(--green); color: var(--green); background: var(--green-bg); }
+
+  /* ── CARD ── */
+  .card { margin-bottom: 0; }
+  .card-head { padding: 10px 14px; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #fff; border-radius: 6px 6px 0 0; }
+  .card-body { border: 1.5px solid; border-top: none; border-radius: 0 0 6px 6px; padding: 16px; background: #fff; }
+
+  /* ── FIELDS ── */
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 10px; font-weight: 700; color: var(--dark-red); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .field .hint { font-size: 10px; color: #999; margin-top: 3px; line-height: 1.4; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0 10px; }
+  @media (max-width: 480px) {
+    .grid-2 { grid-template-columns: 1fr; }
+    .grid-3 { grid-template-columns: 1fr 1fr; }
+  }
+
+  input[type="text"], select, textarea {
+    width: 100%; padding: 9px 10px; border: 1px solid var(--border);
+    border-radius: 6px; font-size: 14px; color: var(--dark);
+    font-family: inherit; outline: none; background: #fff;
+    -webkit-appearance: none; appearance: none;
+    transition: border-color 0.15s;
+  }
+  input[type="text"]:focus, select:focus, textarea:focus { border-color: var(--red); }
+  select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23999' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 30px; }
+  textarea { resize: vertical; line-height: 1.5; min-height: 80px; }
+
+  /* ── BUTTONS ── */
+  .btn { padding: 10px 20px; border-radius: 7px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; border: none; -webkit-tap-highlight-color: transparent; }
+  .btn-primary { background: var(--red); color: #fff; }
+  .btn-ghost { background: #fff; color: #666; border: 1px solid var(--border); }
+  .btn-green { background: var(--green); color: #fff; }
+  .btn-add {
+    display: flex; align-items: center; gap: 6px; padding: 8px 14px;
+    border: 1.5px dashed var(--red); border-radius: 6px; background: transparent;
+    color: var(--red); font-size: 12px; font-weight: 700; cursor: pointer;
+    margin-top: 8px; font-family: inherit; -webkit-tap-highlight-color: transparent;
+  }
+  .btn-remove {
+    padding: 4px 10px; border: 1px solid #e0b0b0; border-radius: 4px;
+    background: #fff0f0; color: var(--status-red); font-size: 11px;
+    cursor: pointer; font-family: inherit; flex-shrink: 0; -webkit-tap-highlight-color: transparent;
+  }
+  .btn-generate {
+    width: 100%; padding: 16px; background: var(--red); color: #fff;
+    border: none; border-radius: 8px; font-size: 16px; font-weight: 700;
+    cursor: pointer; font-family: inherit; -webkit-tap-highlight-color: transparent;
+  }
+  .btn-generate:disabled { background: #bbb; }
+
+  /* ── ITEMS ── */
+  .item-box { background: #fafafa; border: 1px solid #eee; border-radius: 7px; padding: 14px 12px 8px; margin-bottom: 10px; }
+  .item-box-hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .item-lbl { font-weight: 700; font-size: 12px; }
+  .out-row { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 10px; }
+  .out-num { background: var(--amber); color: #fff; min-width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; margin-top: 8px; }
+
+  /* ── NAV FOOTER ── */
+  .nav-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; padding-top: 14px; border-top: 1px solid #eee; }
+
+  /* ── INSTALL BANNER ── */
+  .install-banner {
+    background: #1A3A5C; border-radius: 8px; padding: 14px 16px;
+    display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
+  }
+  .install-banner-icon { font-size: 24px; flex-shrink: 0; }
+  .install-banner-text { flex: 1; }
+  .install-banner-text h3 { font-size: 13px; color: #fff; margin-bottom: 3px; }
+  .install-banner-text p { font-size: 11px; color: rgba(255,255,255,0.7); line-height: 1.4; }
+  .install-banner-btn { background: var(--yellow); color: #333; border: none; padding: 8px 14px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; flex-shrink: 0; }
+
+  /* ── SUCCESS ── */
+  .success-banner { background: var(--green-bg); border: 1.5px solid var(--green); border-radius: 8px; padding: 14px 16px; margin-top: 14px; }
+  .success-banner h3 { color: var(--green); font-size: 14px; margin-bottom: 4px; }
+  .success-banner p { font-size: 12px; color: #555; margin-bottom: 10px; }
+  .success-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* ── ERROR ── */
+  .error-box { background: var(--red-bg); border: 1px solid #ffcdd2; border-radius: 6px; padding: 10px 12px; color: #c62828; font-size: 12px; margin-bottom: 12px; }
+
+  /* ── MODAL ── */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 999; display: flex; align-items: flex-end; justify-content: center; }
+  .modal { background: #fff; border-radius: 16px 16px 0 0; padding: 24px 20px 40px; max-width: 500px; width: 100%; }
+  .modal h2 { font-size: 17px; color: var(--dark); margin-bottom: 8px; }
+  .modal p { font-size: 13px; color: #666; line-height: 1.6; margin-bottom: 14px; }
+  .modal-step { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 12px; padding: 12px; background: #fafafa; border-radius: 8px; }
+  .modal-step-num { background: var(--red); color: #fff; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; }
+  .modal-step-text { font-size: 13px; color: var(--dark); line-height: 1.5; }
+  .modal-close { width: 100%; padding: 14px; background: var(--red); color: #fff; border: none; border-radius: 8px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <div class="header-inner">
+    <div class="logo-block">
+      <div class="logo-name">AMANDLA</div>
+      <div><span class="logo-tag">PROTECTION SERVICES</span></div>
+      <div class="logo-impi">/ IMPI \</div>
+    </div>
+    <div class="header-text">
+      <h1>Report Builder</h1>
+      <p>Amandla Protection Services</p>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:16%"></div></div>
+    </div>
+  </div>
+</div>
+
+<div class="container" id="app"></div>
+
+<script>
+// ══════════════════════════════════════════════
+//  PWA REGISTRATION
+// ══════════════════════════════════════════════
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => navigator.serviceWorker.register("sw.js", {scope: "/impi-technical-reports/"}));
+}
+
+// ══════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════
+let currentStep = 0;
+const STEPS = ["Report Info","Summary","Faults","Work Done","Outstanding","Actions"];
+const REPORT_TYPES = ["Daily Progress Report","Daily Site Report & Sign-Off Meeting","Weekly Progress Report","Snag / Defect Report","Handover Report","Incident Report"];
+const PROJ_STATUSES = ["In Progress","On Track","At Risk","Installation Complete — Awaiting Final Sign-Off","Completed","On Hold"];
+const FAULT_STATUSES = ["Outstanding","Resolved","In Progress","Deferred"];
+const PRIORITIES = ["High","Medium","Low"];
+
+const today = new Date();
+const dateStr = today.toLocaleDateString("en-ZA", { weekday:"long", year:"numeric", month:"long", day:"numeric" });
+
+function uid() { return Math.random().toString(36).slice(2,8); }
+function newFault()  { return { id:uid(), location:"", description:"", status:"Outstanding" }; }
+function newWork()   { return { id:uid(), area:"", description:"" }; }
+function newOut()    { return { id:uid(), description:"" }; }
+function newAction() { return { id:uid(), action:"", owner:"", due:"", priority:"High" }; }
+
+let S = {
+  reportType:"Daily Site Report & Sign-Off Meeting", reportDate:dateStr,
+  projectName:"", projectManager:"", siteClient:"", clientContact:"",
+  preparedBy:"", projectStatus:"In Progress", summary:"",
+  faults:[newFault()], workDone:[newWork()], outstanding:[newOut()], actions:[newAction()],
+};
+
+// ══════════════════════════════════════════════
+//  DOM HELPERS
+// ══════════════════════════════════════════════
+function el(tag, attrs={}, ...kids) {
+  const e = document.createElement(tag);
+  Object.entries(attrs).forEach(([k,v]) => {
+    if(k==="class") e.className=v;
+    else if(k==="style") e.style.cssText=v;
+    else if(k.startsWith("on")) e.addEventListener(k.slice(2),v);
+    else e.setAttribute(k,v);
+  });
+  kids.forEach(k => { if(k!=null) typeof k==="string" ? e.appendChild(document.createTextNode(k)) : e.appendChild(k); });
+  return e;
+}
+function mkInput(val,ph,cb) {
+  const i=el("input",{type:"text",value:val,placeholder:ph||""}); i.addEventListener("input",e=>cb(e.target.value)); return i;
+}
+function mkSelect(opts,val,cb) {
+  const s=el("select"); opts.forEach(o=>{const op=el("option",{value:o},o); if(o===val)op.selected=true; s.appendChild(op);}); s.addEventListener("change",e=>cb(e.target.value)); return s;
+}
+function mkTextarea(val,ph,rows,cb) {
+  const t=el("textarea",{placeholder:ph||"",rows:rows||3},); t.value=val; t.addEventListener("input",e=>cb(e.target.value)); return t;
+}
+function mkField(label,input,hint) {
+  const lbl=el("label",{},label);
+  const w=el("div",{"class":"field"},lbl,input);
+  if(hint){const h=el("div",{"class":"hint"},hint);w.appendChild(h);}
+  return w;
+}
+function mkGrid(cls,...kids) { const g=el("div",{"class":cls}); kids.forEach(k=>{if(k)g.appendChild(k);}); return g; }
+function mkCard(title,color) {
+  const head=el("div",{"class":"card-head"},title); head.style.background=color;
+  const body=el("div",{"class":"card-body"}); body.style.borderColor=color;
+  const wrap=el("div",{"class":"card"},head,body);
+  return {wrap,body};
+}
+function mkNavFooter(backCb,nextLabel,nextCb) {
+  const f=el("div",{"class":"nav-footer"});
+  if(backCb){const b=el("button",{"class":"btn btn-ghost","onclick":backCb},"← Back");f.appendChild(b);}
+  if(nextCb){const b=el("button",{"class":"btn btn-primary","onclick":nextCb},nextLabel||"Next →");f.appendChild(b);}
+  return f;
+}
+function mkAddBtn(label,cb) {
+  const b=el("button",{"class":"btn-add","onclick":cb},el("span",{style:"font-size:16px"},"+")," "+label); return b;
+}
+function mkRemoveBtn(cb) {
+  const b=el("button",{"class":"btn-remove","onclick":cb},"remove"); return b;
+}
+
+// ══════════════════════════════════════════════
+//  STEPS
+// ══════════════════════════════════════════════
+function step0() {
+  const {wrap,body}=mkCard("Report Information","#CC1C1C");
+  body.appendChild(mkGrid("grid-2",
+    mkField("Report Type",mkSelect(REPORT_TYPES,S.reportType,v=>S.reportType=v)),
+    mkField("Report Date",mkInput(S.reportDate,"e.g. Wednesday 15 April 2026",v=>S.reportDate=v)),
+    mkField("Project Name",mkInput(S.projectName,"e.g. CCTV Add-On — Windjammers",v=>S.projectName=v)),
+    mkField("Project Manager",mkInput(S.projectManager,"Full name",v=>S.projectManager=v)),
+    mkField("Site / Client",mkInput(S.siteClient,"e.g. Windjammers Restaurant",v=>S.siteClient=v)),
+    mkField("Client Contact",mkInput(S.clientContact,"e.g. Maryke",v=>S.clientContact=v)),
+    mkField("Prepared By",mkInput(S.preparedBy,"Your name",v=>S.preparedBy=v)),
+    mkField("Project Status",mkSelect(PROJ_STATUSES,S.projectStatus,v=>S.projectStatus=v)),
+  ));
+  body.appendChild(mkNavFooter(null,"Next: Summary →",()=>goTo(1)));
+  return wrap;
+}
+
+function step1() {
+  const {wrap,body}=mkCard("Executive Summary","#CC1C1C");
+  body.appendChild(mkField("Your Notes",
+    mkTextarea(S.summary,"Write rough notes or bullet points here. These will appear in the report summary section.\n\ne.g.\n• Sign-off meeting held with Maryke\n• Installation complete\n• 2 cameras back online\n• Client happy overall",10,v=>S.summary=v),
+    "Keep it simple — bullet points or short sentences are fine."));
+  body.appendChild(mkNavFooter(()=>goTo(0),"Next: Faults →",()=>goTo(2)));
+  return wrap;
+}
+
+function step2() {
+  const {wrap,body}=mkCard("Faults & Problems Reported","#C0392B");
+  const list=el("div");
+  function render() {
+    list.innerHTML="";
+    S.faults.forEach((f,i)=>{
+      const box=el("div",{"class":"item-box"});
+      const hdr=el("div",{"class":"item-box-hdr"});
+      hdr.appendChild(el("span",{"class":"item-lbl",style:"color:#C0392B"},"Fault "+(i+1)));
+      if(S.faults.length>1) hdr.appendChild(mkRemoveBtn(()=>{S.faults=S.faults.filter(x=>x.id!==f.id);render();}));
+      box.appendChild(hdr);
+      box.appendChild(mkGrid("grid-2",
+        mkField("Location",mkInput(f.location,"e.g. Main Gate",v=>{f.location=v;})),
+        mkField("Status",mkSelect(FAULT_STATUSES,f.status,v=>{f.status=v;})),
+      ));
+      box.appendChild(mkField("Description",mkTextarea(f.description,"Describe the fault or problem…",2,v=>{f.description=v;})));
+      list.appendChild(box);
+    });
+  }
+  render();
+  body.appendChild(list);
+  body.appendChild(mkAddBtn("Add fault",()=>{S.faults.push(newFault());render();}));
+  body.appendChild(mkNavFooter(()=>goTo(1),"Next: Work Done →",()=>goTo(3)));
+  return wrap;
+}
+
+function step3() {
+  const {wrap,body}=mkCard("Work Performed Today","#1E7C4A");
+  const list=el("div");
+  function render() {
+    list.innerHTML="";
+    S.workDone.forEach((w,i)=>{
+      const box=el("div",{"class":"item-box"});
+      const hdr=el("div",{"class":"item-box-hdr"});
+      hdr.appendChild(el("span",{"class":"item-lbl",style:"color:#1E7C4A"},"Work Item "+(i+1)));
+      if(S.workDone.length>1) hdr.appendChild(mkRemoveBtn(()=>{S.workDone=S.workDone.filter(x=>x.id!==w.id);render();}));
+      box.appendChild(hdr);
+      box.appendChild(mkField("Area / Location",mkInput(w.area,"e.g. Last Chance — Camera Reinstallation",v=>{w.area=v;})));
+      box.appendChild(mkField("Work Description",mkTextarea(w.description,"Describe what was done…",3,v=>{w.description=v;})));
+      list.appendChild(box);
+    });
+  }
+  render();
+  body.appendChild(list);
+  body.appendChild(mkAddBtn("Add work item",()=>{S.workDone.push(newWork());render();}));
+  body.appendChild(mkNavFooter(()=>goTo(2),"Next: Outstanding →",()=>goTo(4)));
+  return wrap;
+}
+
+function step4() {
+  const {wrap,body}=mkCard("Outstanding Work & Client Requests","#B86C00");
+  const list=el("div");
+  function render() {
+    list.innerHTML="";
+    S.outstanding.forEach((o,i)=>{
+      const row=el("div",{"class":"out-row"});
+      row.appendChild(el("div",{"class":"out-num"},String(i+1)));
+      const ta=el("div",{style:"flex:1"}); ta.appendChild(mkTextarea(o.description,"Describe the outstanding item or client request…",2,v=>{o.description=v;}));
+      row.appendChild(ta);
+      if(S.outstanding.length>1){const rb=mkRemoveBtn(()=>{S.outstanding=S.outstanding.filter(x=>x.id!==o.id);render();}); rb.style.marginTop="8px"; row.appendChild(rb);}
+      list.appendChild(row);
+    });
+  }
+  render();
+  body.appendChild(list);
+  body.appendChild(mkAddBtn("Add outstanding item",()=>{S.outstanding.push(newOut());render();}));
+  body.appendChild(mkNavFooter(()=>goTo(3),"Next: Actions →",()=>goTo(5)));
+  return wrap;
+}
+
+function step5() {
+  const {wrap,body}=mkCard("Action Items & Next Steps","#CC1C1C");
+  const list=el("div");
+  function renderActions() {
+    list.innerHTML="";
+    S.actions.forEach((a,i)=>{
+      const box=el("div",{"class":"item-box"});
+      const hdr=el("div",{"class":"item-box-hdr"});
+      hdr.appendChild(el("span",{"class":"item-lbl",style:"color:#CC1C1C"},"Action "+(i+1)));
+      if(S.actions.length>1) hdr.appendChild(mkRemoveBtn(()=>{S.actions=S.actions.filter(x=>x.id!==a.id);renderActions();}));
+      box.appendChild(hdr);
+      box.appendChild(mkField("Action",mkInput(a.action,"e.g. Source Fisheye camera for Garage Area",v=>{a.action=v;})));
+      box.appendChild(mkGrid("grid-3",
+        mkField("Owner",mkInput(a.owner,"e.g. PM",v=>{a.owner=v;})),
+        mkField("Due Date",mkInput(a.due,"e.g. 15 Apr",v=>{a.due=v;})),
+        mkField("Priority",mkSelect(PRIORITIES,a.priority,v=>{a.priority=v;})),
+      ));
+      list.appendChild(box);
+    });
+  }
+  renderActions();
+  body.appendChild(list);
+  body.appendChild(mkAddBtn("Add action item",()=>{S.actions.push(newAction());renderActions();}));
+
+  // Generate section
+  const genArea=el("div",{style:"margin-top:20px;border-top:1px solid #eee;padding-top:18px"});
+  const errBox=el("div",{"class":"error-box",style:"display:none"});
+  genArea.appendChild(errBox);
+
+  const genBtn=el("button",{"class":"btn-generate"},"Generate Report");
+  const hint=el("div",{style:"font-size:11px;color:#999;text-align:center;margin-top:8px"},"Generates a print-ready branded report.");
+  genArea.appendChild(genBtn); genArea.appendChild(hint);
+
+  const successDiv=el("div",{"class":"success-banner",style:"display:none"});
+  const sh3=el("div",{style:"font-weight:700;color:#1E7C4A;font-size:14px;margin-bottom:4px"},"Report ready!");
+  const sp=el("div",{style:"font-size:12px;color:#555;margin-bottom:10px"},"Tap the button below to open and print / save as PDF.");
+  const sActions=el("div",{"class":"success-actions"});
+  const openBtn=el("button",{"class":"btn btn-green"},"Open Report");
+  const newBtn=el("button",{"class":"btn btn-ghost"},"New Report");
+  newBtn.addEventListener("click",()=>{ if(confirm("Start a new report? Current data will be cleared.")){S={reportType:"Daily Site Report & Sign-Off Meeting",reportDate:dateStr,projectName:"",projectManager:"",siteClient:"",clientContact:"",preparedBy:"",projectStatus:"In Progress",summary:"",faults:[newFault()],workDone:[newWork()],outstanding:[newOut()],actions:[newAction()]};goTo(0);} });
+  sActions.appendChild(openBtn); sActions.appendChild(newBtn);
+  successDiv.appendChild(sh3); successDiv.appendChild(sp); successDiv.appendChild(sActions);
+  genArea.appendChild(successDiv);
+
+  genBtn.addEventListener("click",()=>{
+    genBtn.disabled=true; genBtn.textContent="Building…";
+    errBox.style.display="none"; successDiv.style.display="none";
+    try {
+      const html=buildReport();
+      const blob=new Blob([html],{type:"text/html"});
+      const url=URL.createObjectURL(blob);
+      openBtn.onclick=()=>window.open(url,"_blank");
+      successDiv.style.display="block";
+    } catch(e) {
+      errBox.textContent="Error: "+e.message; errBox.style.display="block";
+    } finally { genBtn.disabled=false; genBtn.textContent="Generate Report"; }
+  });
+
+  body.appendChild(genArea);
+  body.appendChild(mkNavFooter(()=>goTo(4),null,null));
+  return wrap;
+}
+
+// ══════════════════════════════════════════════
+//  BUILD REPORT
+// ══════════════════════════════════════════════
+function esc(s){ return s?String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"):""; }
+
+function buildReport(){
+  const workCount=S.workDone.filter(w=>w.description).length;
+  const outCount=S.outstanding.filter(o=>o.description).length;
+  const statusColor=S.projectStatus.includes("Complete")||S.projectStatus==="Completed"?"#1E7C4A":S.projectStatus.includes("Risk")||S.projectStatus==="On Hold"?"#C0392B":"#B86C00";
+
+  const faultRows=S.faults.map((f,i)=>{
+    const sc=f.status==="Resolved"?"#1E7C4A":f.status==="Outstanding"?"#B86C00":"#CC1C1C";
+    return `<tr><td style="padding:8px 10px;border:1px solid #ddd;font-size:12px;color:#666;text-align:center">F-${String(i+1).padStart(2,"0")}</td><td style="padding:8px 10px;border:1px solid #ddd;font-size:12px;font-weight:700">${esc(f.location)||"—"}</td><td style="padding:8px 10px;border:1px solid #ddd;font-size:12px">${esc(f.description)||"—"}</td><td style="padding:8px 10px;border:1px solid #ddd;text-align:center"><span style="background:${sc};color:#fff;padding:3px 10px;border-radius:4px;font-size:11px;font-weight:700">${esc(f.status)}</span></td></tr>`;
+  }).join("");
+
+  const workItems=S.workDone.filter(w=>w.description).map(w=>`<div style="margin-bottom:12px;padding:12px 16px;background:#E8F5E9;border-left:5px solid #1E7C4A;border-radius:4px">${w.area?`<div style="font-weight:700;font-size:12px;color:#1E7C4A;margin-bottom:5px;text-transform:uppercase;letter-spacing:0.04em">${esc(w.area)}</div>`:""}<div style="font-size:12px;color:#3A3A3A;line-height:1.7">${esc(w.description)}</div></div>`).join("");
+
+  const outItems=S.outstanding.filter(o=>o.description).map((o,i)=>`<div style="display:flex;gap:12px;margin-bottom:12px;align-items:flex-start"><span style="background:#B86C00;color:#fff;min-width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:2px">${i+1}</span><span style="font-size:12px;color:#3A3A3A;line-height:1.7;padding-top:3px">${esc(o.description)}</span></div>`).join("");
+
+  const actionRows=S.actions.map((a,i)=>{const pc=a.priority==="High"?"#C0392B":a.priority==="Medium"?"#B86C00":"#1E7C4A";return`<tr><td style="padding:8px 10px;border:1px solid #ddd;font-size:12px;color:#666;text-align:center">${i+1}</td><td style="padding:8px 10px;border:1px solid #ddd;font-size:12px">${esc(a.action)||"—"}</td><td style="padding:8px 10px;border:1px solid #ddd;font-size:12px;background:#f7f7f7">${esc(a.owner)||"TBC"}</td><td style="padding:8px 10px;border:1px solid #ddd;font-size:12px;text-align:center">${esc(a.due)||"TBC"}</td><td style="padding:8px 10px;border:1px solid #ddd;text-align:center;font-weight:700;color:${pc};font-size:12px">${esc(a.priority)}</td></tr>`;}).join("");
+
+  const summaryHTML=(S.summary||"Project progressing as planned.").split(/\n\n+/).map(p=>`<p style="font-size:12px;line-height:1.8;margin:0 0 12px;color:#3A3A3A">${esc(p).replace(/\n/g,"<br>")}</p>`).join("");
+
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>IMPI – ${esc(S.reportType)} – ${esc(S.reportDate)}</title>
+<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;background:#EBEBEB;color:#3A3A3A}@media print{body{background:#fff}.no-print{display:none!important}.page{box-shadow:none!important;margin:0!important;max-width:100%!important}}.page{max-width:920px;margin:24px auto;background:#fff;box-shadow:0 2px 20px rgba(0,0,0,.12)}.header{display:flex;align-items:stretch;border-bottom:4px solid #CC1C1C}.header-logo{padding:20px 24px;border-right:3px solid #CC1C1C;display:flex;align-items:center}.logo-name{font-size:22px;font-weight:900;color:#CC1C1C;line-height:1}.logo-tag{display:inline-block;background:#F5C200;color:#333;font-size:9px;font-weight:700;padding:2px 7px;letter-spacing:.06em;margin:4px 0}.logo-impi{font-size:15px;font-weight:900;color:#CC1C1C;letter-spacing:1px}.header-info{flex:1;padding:18px 24px}.company-name{font-size:16px;font-weight:700;color:#CC1C1C}.company-sub{font-size:10px;color:#999;margin-top:2px}.report-title{font-size:14px;font-weight:700;color:#3A3A3A;margin-top:10px}.report-date{font-size:12px;color:#CC1C1C;font-weight:700;margin-top:3px}.confidential{display:inline-block;background:#CC1C1C;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:3px;margin-top:5px;letter-spacing:.08em}.body{padding:28px 32px}.meta-table{width:100%;border-collapse:collapse;margin-bottom:24px;font-size:12px}.meta-table td{padding:8px 12px;border:1px solid #EEE}.meta-table td:first-child{font-weight:700;color:#8B0000;background:#F7F7F7;width:170px}.stats{display:flex;gap:12px;margin-bottom:24px}.stat{flex:1;padding:16px 12px;border-radius:6px;text-align:center;border-top:4px solid}.stat-n{font-size:38px;font-weight:700;line-height:1;margin-bottom:5px}.stat-l{font-size:11px;color:#666}.sec-head{background:#CC1C1C;color:#fff;font-size:12px;font-weight:700;letter-spacing:.08em;padding:9px 14px;border-radius:4px 4px 0 0;text-transform:uppercase;margin-top:24px}.sec-body{border:1.5px solid #CC1C1C;border-top:none;border-radius:0 0 4px 4px;padding:18px}.intro{font-size:12px;color:#666;margin:0 0 14px;line-height:1.6}table.dt{width:100%;border-collapse:collapse;font-size:12px}table.dt th{background:#CC1C1C;color:#fff;padding:9px 10px;text-align:left;font-size:11px;font-weight:700}table.dt tr:nth-child(even) td{background:#fafafa}.out-wrap{background:#FFF8E1;border-left:5px solid #B86C00;padding:16px 18px;border-radius:4px}.sign-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:8px}.sign-box{border:1px solid #ddd;padding:20px;border-radius:4px}.sign-title{font-size:12px;font-weight:700;color:#CC1C1C;margin-bottom:18px}.sign-row{margin-bottom:14px}.sign-lbl{font-size:10px;color:#aaa;margin-bottom:3px}.sign-line{border-bottom:1px solid #ccc;padding-bottom:8px}.note{font-size:11px;color:#B86C00;font-style:italic;margin:0 0 14px}.footer{background:#f7f7f7;border-top:3px solid #CC1C1C;padding:10px 32px;display:flex;justify-content:space-between;align-items:center}.footer-text{font-size:10px;color:#999}.footer-conf{font-size:10px;color:#CC1C1C;font-weight:700}.print-btn{position:fixed;bottom:24px;right:24px;background:#CC1C1C;color:#fff;border:none;padding:13px 26px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:Arial,sans-serif;box-shadow:0 4px 14px rgba(204,28,28,.4);z-index:999}</style></head><body>
+<button class="print-btn no-print" onclick="window.print()">Print / Save PDF</button>
+<div class="page">
+<div class="header"><div class="header-logo"><div><div class="logo-name">AMANDLA</div><div><span class="logo-tag">PROTECTION SERVICES</span></div><div class="logo-impi">/ IMPI \\</div></div></div><div class="header-info"><div class="company-name">IMPI Protection Agency (Pty) Ltd</div><div class="company-sub">10 Kosmos Crescent, Rynoue AH, Roodeplaat &nbsp;|&nbsp; 012 543 0640 &nbsp;|&nbsp; info@impi-secure.co.za &nbsp;|&nbsp; www.impi-secure.co.za</div><div class="report-title">${esc(S.reportType).toUpperCase()}</div><div class="report-date">${esc(S.reportDate)}</div><span class="confidential">CONFIDENTIAL</span></div></div>
+<div class="body">
+<table class="meta-table"><tr><td>Report Date</td><td>${esc(S.reportDate)}</td></tr><tr><td>Report Type</td><td>${esc(S.reportType)}</td></tr><tr><td>Project Name</td><td>${esc(S.projectName)||"—"}</td></tr><tr><td>Project Manager</td><td>${esc(S.projectManager)||"—"}</td></tr><tr><td>Site / Client</td><td>${esc(S.siteClient)||"—"}</td></tr><tr><td>Client Contact</td><td>${esc(S.clientContact)||"—"}</td></tr><tr><td>Prepared By</td><td>${esc(S.preparedBy)||"—"}</td></tr><tr><td>Project Status</td><td><strong style="color:${statusColor}">${esc(S.projectStatus)}</strong></td></tr></table>
+<div class="stats"><div class="stat" style="border-top-color:#1E7C4A;background:#E8F5E9"><div class="stat-n" style="color:#1E7C4A">${workCount}</div><div class="stat-l">Works Completed</div></div><div class="stat" style="border-top-color:#C0392B;background:#FFEBEE"><div class="stat-n" style="color:#C0392B">${S.faults.length}</div><div class="stat-l">Faults Reported</div></div><div class="stat" style="border-top-color:#B86C00;background:#FFF8E1"><div class="stat-n" style="color:#B86C00">${outCount}</div><div class="stat-l">Outstanding Items</div></div></div>
+<div class="sec-head">1. Executive Summary</div><div class="sec-body">${summaryHTML}</div>
+<div class="sec-head">2. Faults &amp; Problems Reported</div><div class="sec-body"><p class="intro">The following faults and concerns were reported during the site visit.</p><table class="dt"><thead><tr><th style="width:60px">Ref</th><th style="width:150px">Location</th><th>Description</th><th style="width:120px">Status</th></tr></thead><tbody>${faultRows||"<tr><td colspan='4' style='padding:12px;color:#999;text-align:center'>No faults recorded</td></tr>"}</tbody></table></div>
+<div class="sec-head">3. Work Performed on Site Today</div><div class="sec-body"><p class="intro">The following work was carried out on site.</p>${workItems||"<p style='font-size:12px;color:#999'>No work items recorded.</p>"}</div>
+<div class="sec-head">4. Outstanding Work &amp; Client Requests</div><div class="sec-body"><p class="intro">The following items remain outstanding and must be resolved before final sign-off.</p><div class="out-wrap">${outItems||"<p style='font-size:12px;color:#999;margin:0'>No outstanding items recorded.</p>"}</div></div>
+<div class="sec-head">5. Action Items &amp; Next Steps</div><div class="sec-body"><table class="dt"><thead><tr><th style="width:40px">#</th><th>Action</th><th style="width:140px">Owner</th><th style="width:110px">Due Date</th><th style="width:80px">Priority</th></tr></thead><tbody>${actionRows||"<tr><td colspan='5' style='padding:12px;color:#999;text-align:center'>No action items recorded</td></tr>"}</tbody></table></div>
+<div class="sec-head">6. Sign-Off</div><div class="sec-body"><p class="note">Note: Final sign-off is subject to completion of all outstanding items listed above.</p><div class="sign-grid"><div class="sign-box"><div class="sign-title">Prepared By — IMPI / Amandla</div><div class="sign-row"><div class="sign-lbl">Name</div><div class="sign-line"></div></div><div class="sign-row"><div class="sign-lbl">Signature</div><div class="sign-line"></div></div><div class="sign-row"><div class="sign-lbl">Date</div><div class="sign-line"></div></div></div><div class="sign-box"><div class="sign-title">Client Representative${S.clientContact?` (${esc(S.clientContact)})`:""}</div><div class="sign-row"><div class="sign-lbl">Name</div><div class="sign-line"></div></div><div class="sign-row"><div class="sign-lbl">Signature</div><div class="sign-line"></div></div><div class="sign-row"><div class="sign-lbl">Date</div><div class="sign-line"></div></div></div></div></div>
+</div><div class="footer"><span class="footer-text">IMPI Protection Agency (Pty) Ltd &nbsp;|&nbsp; 10 Kosmos Crescent, Rynoue AH, Roodeplaat &nbsp;|&nbsp; 012 543 0640 &nbsp;|&nbsp; info@impi-secure.co.za &nbsp;|&nbsp; www.impi-secure.co.za</span><span class="footer-conf">CONFIDENTIAL</span></div></div></body></html>`;
+}
+
+// ══════════════════════════════════════════════
+//  INSTALL BANNER (iOS)
+// ══════════════════════════════════════════════
+function showInstallBanner() {
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone;
+  if(!isIOS || isStandalone) return null;
+
+  const banner=el("div",{"class":"install-banner"});
+  banner.appendChild(el("div",{"class":"install-banner-icon"},"📱"));
+  const text=el("div",{"class":"install-banner-text"});
+  text.appendChild(el("h3",{},"Add to Home Screen"));
+  text.appendChild(el("p",{},"Install this app on your iPhone for quick access — works offline too."));
+  banner.appendChild(text);
+  const btn=el("button",{"class":"install-banner-btn"},"How?");
+  btn.addEventListener("click",showInstallModal);
+  banner.appendChild(btn);
+  return banner;
+}
+
+function showInstallModal() {
+  const overlay=el("div",{"class":"modal-overlay"});
+  const modal=el("div",{"class":"modal"});
+  modal.appendChild(el("h2",{},"Add to Home Screen"));
+  modal.appendChild(el("p",{},"Follow these steps to install the IMPI Report Builder on your iPhone:"));
+  [
+    ["Tap the Share button","Tap the Share icon at the bottom of Safari (the box with an arrow pointing up)."],
+    ["Scroll down","In the share sheet that appears, scroll down to find \"Add to Home Screen\"."],
+    ["Tap Add","Tap \"Add to Home Screen\", then tap \"Add\" in the top right corner."],
+    ["Done!","The IMPI Report Builder icon will appear on your home screen. Tap it to open the app anytime — even without internet."],
+  ].forEach(([title,desc],i)=>{
+    const step=el("div",{"class":"modal-step"});
+    step.appendChild(el("div",{"class":"modal-step-num"},String(i+1)));
+    step.appendChild(el("div",{"class":"modal-step-text"},el("strong",{},title+": "),desc));
+    modal.appendChild(step);
+  });
+  const closeBtn=el("button",{"class":"modal-close"},"Got it!");
+  closeBtn.addEventListener("click",()=>overlay.remove());
+  modal.appendChild(closeBtn);
+  overlay.appendChild(modal);
+  overlay.addEventListener("click",e=>{if(e.target===overlay)overlay.remove();});
+  document.body.appendChild(overlay);
+}
+
+// ══════════════════════════════════════════════
+//  RENDER ENGINE
+// ══════════════════════════════════════════════
+function goTo(i) { currentStep=i; render(); }
+
+function render() {
+  document.getElementById("progressFill").style.width=Math.round(((currentStep+1)/STEPS.length)*100)+"%";
+
+  // Nav
+  const nav=document.createElement("div"); nav.className="step-nav";
+  STEPS.forEach((s,i)=>{
+    const b=el("button",{"class":"step-btn"+(i===currentStep?" active":i<currentStep?" done":""),"onclick":()=>goTo(i)},(i+1)+". "+s);
+    nav.appendChild(b);
+  });
+
+  const steps=[step0,step1,step2,step3,step4,step5];
+  const content=steps[currentStep]();
+
+  const app=document.getElementById("app");
+  app.innerHTML="";
+
+  // Install banner only on step 0
+  if(currentStep===0){
+    const banner=showInstallBanner();
+    if(banner) app.appendChild(banner);
+  }
+
+  app.appendChild(nav);
+  app.appendChild(content);
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+
+render();
+</script>
+</body>
+</html>

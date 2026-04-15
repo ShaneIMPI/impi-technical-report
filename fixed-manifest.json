@@ -1,0 +1,25 @@
+{
+  "name": "IMPI Report Builder",
+  "short_name": "IMPI Reports",
+  "description": "Amandla Protection Services — Daily Site Report Template",
+  "start_url": "/impi-technical-reports/",
+  "scope": "/impi-technical-reports/",
+  "display": "standalone",
+  "background_color": "#CC1C1C",
+  "theme_color": "#CC1C1C",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
